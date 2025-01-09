@@ -1,0 +1,93 @@
+conf t
+ip route 0.0.0.0 0.0.0.0 f1/1
+
+!Lisboa2 link
+int f0/0
+ip add 4.4.4.13 255.255.255.252
+no shut
+
+
+!Madrid link
+int f0/1
+ip add 4.4.4.10 255.255.255.252
+no shut
+
+!L1
+int f1/0
+ip add 65.0.1.1 255.255.255.0
+no shut
+
+!INTERNET
+int f1/1
+ip add 2.2.2.3 255.255.255.128
+no shut
+
+end
+
+!BGP configs
+conf t
+
+router bgp 40000		!my AS
+address-family ipv4 unicast	!ipv4
+
+neighbor 4.4.4.9 remote-as 20000 !eBGP Neighboring with Madrid
+neighbor 4.4.4.14 remote-as 1000  !eBGP Neighboring with Lisboa2
+
+neighbor 4.4.4.9 default-originate ! remote-as 20000 !eBGP Neighboring with Madrid
+neighbor 4.4.4.14 default-originate ! remote-as 1000 !eBGP Neighboring with Lisboa2
+
+network 65.0.1.0 mask 255.255.255.0 	!L1
+No network 2.2.2.0 mask 255.255.255.128	!internet
+
+end
+write mem
+
+
+!IPv6
+
+
+conf t
+ipv6 unicast-routing
+ipv6 route ::/0 f1/1
+
+int f1/1 !internet
+no shut
+ipv6 add 2002:2:2::2/64
+ipv6 enable
+
+! BGP peering links
+int f0/0 !Lisboa2
+no shut 
+ipv6 enable
+ipv6 add 2001:4:4:4::1/64
+
+in f0/1 !Madrid
+no shut
+ipv6 enable
+ipv6 add 2001:4:4:3::2/64
+
+int f1/0 ! L1 SIP Proxy
+no shut
+ipv6 enable
+ipv6 add 2301:65:0::1/48
+
+
+! BGP CONFIGS
+router bgp 40000
+address-family ipv6 unicast
+
+neighbor 2001:4:4:3::1 remote-as 20000 !Madrid
+neighbor 2001:4:4:3::1 default-originate
+neighbor 2001:4:4:3::1 activate
+
+neighbor 2001:4:4:4::2 remote-as 1000 !lisboa2
+neighbor 2001:4:4:4::2 default-originate
+neighbor 2001:4:4:4::2 activate
+
+
+
+network 2301:65:0::/48
+
+
+End
+write mem
